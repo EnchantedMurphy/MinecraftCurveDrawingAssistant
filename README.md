@@ -1,4 +1,4 @@
-# Minecraft 曲线绘制辅助
+# Minecraft绘制辅助工具
 
 一个纯前端 HTML 工具，帮助在 Minecraft 中沿贝塞尔曲线铺设方块（铁路、墙壁、道路等）。
 
