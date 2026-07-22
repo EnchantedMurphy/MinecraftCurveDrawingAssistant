@@ -5,18 +5,18 @@
 <title>Minecraft 曲线绘制辅助</title>
 <style>
   :root{
-    --accent:#00ff99;--accent-dim:#00cc77;
-    --bg:#0d1b2a;--bg2:#16213e;--bg3:#0a1628;
-    --border:#0a3d62;--border2:#1e3a5f;
-    --text:#e0e0e0;--text-muted:#aaa;--text-dim:#555;
-    --tab-bg:#0a1220;
+    --accent:#5b9bd5;--accent-dim:#4a8bc5;
+    --bg:#1a1d23;--bg2:#21252b;--bg3:#181a1f;
+    --border:#2d333b;--border2:#383e47;
+    --text:#edf0f5;--text-heading:#fff;--text-muted:#b0b5bd;--text-dim:#868c95;
+    --tab-active:#2a303a;--tab-bg:#15181d;
   }
   .light{
-    --accent:#007a44;--accent-dim:#005c33;
-    --bg:#f0f4f8;--bg2:#ffffff;--bg3:#e2eaf2;
-    --border:#b0c8e0;--border2:#ccdaeb;
-    --text:#1a2a3a;--text-muted:#556;--text-dim:#99a;
-    --tab-bg:#d8e8f4;
+    --accent:#2563eb;--accent-dim:#1d4ed8;
+    --bg:#f5f6f8;--bg2:#ffffff;--bg3:#eef0f4;
+    --border:#d8dce3;--border2:#e5e8ed;
+    --text:#111827;--text-heading:#000;--text-muted:#4b5563;--text-dim:#6b7280;
+    --tab-active:rgba(37,99,235,0.12);--tab-bg:#e8ecf2;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;transition:background .3s,color .3s}
@@ -25,15 +25,15 @@
   .left-col{display:flex;flex-direction:column;flex-shrink:0}
   .top-bar{height:44px;display:flex;align-items:center;padding:0 6px;background:var(--bg2);border-bottom:1px solid var(--border);overflow:hidden;transition:width .32s cubic-bezier(.4,0,.2,1);width:328px}
   .top-bar.collapsed{width:48px}
-  .top-title{font-size:1.05rem;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;margin-left:8px}
+  .top-title{font-size:1.05rem;font-weight:700;color:var(--text-heading);white-space:nowrap;overflow:hidden;margin-left:8px}
   .left-row{display:flex;flex:1;overflow:hidden}
   /* ── Tab bar ── */
   .tab-bar{width:48px;flex-shrink:0;background:var(--tab-bg);display:flex;flex-direction:column;align-items:center;padding:6px 0;border-right:1px solid var(--border);z-index:10;gap:0}
   .tab-bar-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:8px}
   .tab-bar-bot{display:flex;flex-direction:column;align-items:center;gap:4px;padding-bottom:2px}
   .tab-btn{width:36px;height:36px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s;flex-shrink:0}
-  .tab-btn:hover{background:var(--border2);color:var(--accent)}
-  .tab-btn.active{background:var(--border2);color:var(--accent)}
+  .tab-btn:hover{background:var(--tab-active);color:var(--accent)}
+  .tab-btn.active{background:var(--tab-active);color:var(--accent)}
   .tab-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tab-sep{width:24px;height:1px;background:var(--border);margin:4px 0}
   /* ── Sidebar ── */
@@ -52,7 +52,7 @@
   input[type=number]:focus{border-color:var(--accent)}
   select{background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none}
   input[type=range]{width:100%;accent-color:var(--accent)}
-  .gen-btn{background:var(--accent);color:#0a1628;border:none;padding:8px;border-radius:4px;font-weight:bold;font-size:0.9rem;cursor:pointer;transition:background .2s;width:100%}
+  .gen-btn{background:var(--accent);color:#fff;border:none;padding:8px;border-radius:4px;font-weight:bold;font-size:0.9rem;cursor:pointer;transition:background .2s;width:100%}
   .gen-btn:hover{background:var(--accent-dim)}
   textarea{background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:8px;border-radius:4px;font-size:0.75rem;font-family:monospace;resize:vertical;min-height:120px;width:100%;outline:none}
   .count-info{font-size:0.76rem;color:var(--text-dim);text-align:right;margin-top:2px}
@@ -73,10 +73,10 @@
   .reset-btn{background:transparent;color:var(--text-muted);border:1px solid var(--border);padding:3px 8px;border-radius:4px;font-size:0.78rem;cursor:pointer;transition:color .2s,border-color .2s}
   .reset-btn:hover{color:var(--accent);border-color:var(--accent)}
   .canvas-overlay-tl{position:absolute;top:10px;left:12px;display:flex;align-items:baseline;gap:6px;z-index:5}
-  .canvas-overlay-tl .tl-title{font-size:1.05rem;font-weight:700;color:var(--accent)}
+  .canvas-overlay-tl .tl-title{font-size:1.05rem;font-weight:700;color:var(--text-heading)}
   .tl-ver{font-size:0.72rem;border-radius:4px;padding:1px 7px;white-space:nowrap}
-  :root .tl-ver{color:#00ff99;background:rgba(0,255,153,0.12)}
-  .light .tl-ver{color:#007a44;background:rgba(0,122,68,0.1)}
+  :root .tl-ver{color:#7ab8e8;background:rgba(91,155,213,0.15)}
+  .light .tl-ver{color:#2563eb;background:rgba(37,99,235,0.1)}
   .canvas-overlay-br{position:absolute;bottom:10px;right:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;z-index:5}
   .legend-item{display:flex;align-items:center;gap:4px;font-size:0.73rem;color:var(--text-muted)}
   .legend-dot{width:11px;height:11px;border-radius:2px;flex-shrink:0}
@@ -307,9 +307,8 @@ function drawGrid(){
   const left=toWorld(0,0), right=toWorld(cv.width,cv.height);
   const x0=Math.floor(left.x)-1, x1=Math.ceil(right.x)+1;
   const z0=Math.floor(left.z)-1, z1=Math.ceil(right.z)+1;
-  const st=getComputedStyle(document.body);
-  const gridCol=isDark?'#1e2d40':'#cddaeb';
-  const axisCol=isDark?'#2a4a6a':'#90b8d8';
+  const gridCol=isDark?'#252a33':'#d8dce3';
+  const axisCol=isDark?'#323943':'#a8b5c8';
   ctx.strokeStyle=gridCol;
   ctx.lineWidth=1;
   for(let x=x0;x<=x1;x++){
@@ -334,7 +333,7 @@ function render(){
 
   // draw blocks
   if(lastBlocks.length>0){
-    const ac=isDark?'0,255,153':'0,120,68';
+    const ac=isDark?'91,155,213':'37,99,235';
     ctx.fillStyle=`rgba(${ac},0.25)`;
     ctx.strokeStyle=`rgba(${ac},0.5)`;
     ctx.lineWidth=0.5;
@@ -344,7 +343,7 @@ function render(){
       ctx.strokeRect(s.x,s.y,cellSize,cellSize);
     }
     if(cellSize>=10){
-      ctx.fillStyle=isDark?'#00ff99':'#007a44';
+      ctx.fillStyle=isDark?'#5b9bd5':'#2563eb';
       ctx.font=`${Math.max(8,cellSize*0.45)}px monospace`;
       ctx.textAlign='center';ctx.textBaseline='middle';
       const b0=lastBlocks[0], s0=toScreen(b0.x,b0.z);
@@ -361,11 +360,11 @@ function render(){
     const s=toScreen(curve[i].x,curve[i].z);
     i===0?ctx.moveTo(s.x,s.y):ctx.lineTo(s.x,s.y);
   }
-  ctx.strokeStyle='#ff8800';ctx.lineWidth=2;ctx.stroke();
+  ctx.strokeStyle=isDark?'#ff8800':'#d4700a';ctx.lineWidth=2;ctx.stroke();
 
   // control handles
   ctx.setLineDash([4,4]);
-  ctx.strokeStyle='#ffff0044';ctx.lineWidth=1;
+  ctx.strokeStyle=isDark?'rgba(255,255,0,0.27)':'rgba(180,140,20,0.5)';ctx.lineWidth=1;
   const sp0=toScreen(p0.x,p0.z), sp1=toScreen(p1.x,p1.z);
   const sp2=toScreen(p2.x,p2.z), sp3=toScreen(p3.x,p3.z);
   ctx.beginPath();ctx.moveTo(sp0.x,sp0.y);ctx.lineTo(sp1.x,sp1.y);ctx.stroke();
@@ -373,16 +372,16 @@ function render(){
   ctx.setLineDash([]);
 
   // control points
-  ctx.fillStyle='#ffff0088';
+  ctx.fillStyle=isDark?'rgba(255,255,0,0.53)':'rgba(180,130,0,0.6)';
   [[sp1,'cp1'],[sp2,'cp2']].forEach(([p,])=>{
     ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
   });
 
   // endpoints
   [[sp0,'S'],[sp3,'E']].forEach(([p,lbl])=>{
-    ctx.fillStyle='#ff00ff';
+    ctx.fillStyle=isDark?'#ff00ff':'#c030c0';
     ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#fff';
+    ctx.fillStyle=isDark?'#fff':'#fff';
     ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(lbl,p.x,p.y);
   });
