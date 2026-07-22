@@ -31,6 +31,11 @@
   .legend-dot{width:12px;height:12px;border-radius:2px}
   .count-info{font-size:0.78rem;color:#888;text-align:center}
   .section-label{font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+  .angle-row{display:flex;flex-direction:column;gap:3px}
+  .angle-inputs{display:flex;align-items:center;gap:6px}
+  .angle-inputs input[type=range]{flex:1;accent-color:#0f9}
+  .angle-inputs input[type=number]{width:58px;flex-shrink:0}
+  .angle-inputs span{font-size:0.8rem;color:#aaa;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -43,23 +48,33 @@
       <div class="field"><label>X</label><input type="number" id="x0" value="0"></div>
       <div class="field"><label>Z</label><input type="number" id="z0" value="0"></div>
     </div>
-    <div class="field"><label>切线角度 (0°=+X, 90°=+Z)</label><input type="number" id="a0" value="45" min="0" max="180"></div>
+    <div class="angle-row">
+      <label>切线角度 (0°=+X, 90°=+Z)</label>
+      <div class="angle-inputs">
+        <input type="range" id="a0s" min="0" max="360" value="45">
+        <input type="number" id="a0" value="45" min="0" max="360">
+        <span>°</span>
+      </div>
+    </div>
 
     <div class="section-label">终点</div>
     <div class="field-group">
       <div class="field"><label>X</label><input type="number" id="x1" value="20"></div>
       <div class="field"><label>Z</label><input type="number" id="z1" value="15"></div>
     </div>
-    <div class="field"><label>切线角度 (0°=+X, 90°=+Z)</label><input type="number" id="a1" value="135" min="0" max="180"></div>
+    <div class="angle-row">
+      <label>切线角度 (0°=+X, 90°=+Z)</label>
+      <div class="angle-inputs">
+        <input type="range" id="a1s" min="0" max="360" value="135">
+        <input type="number" id="a1" value="135" min="0" max="360">
+        <span>°</span>
+      </div>
+    </div>
 
     <h2>曲线调节</h2>
-    <div class="slider-row">
-      <label>起点把手长度 <span class="slider-val" id="h0v">10</span></label>
-      <input type="range" id="h0" min="1" max="50" value="10">
-    </div>
-    <div class="slider-row">
-      <label>终点把手长度 <span class="slider-val" id="h1v">10</span></label>
-      <input type="range" id="h1" min="1" max="50" value="10">
+    <div class="field-group">
+      <div class="field"><label>起点把手长度</label><input type="number" id="h0" value="10" min="0.1" step="0.5"></div>
+      <div class="field"><label>终点把手长度</label><input type="number" id="h1" value="10" min="0.1" step="0.5"></div>
     </div>
 
     <h2>方块路径模式</h2>
@@ -67,7 +82,7 @@
       <label>连接方式</label>
       <select id="mode">
         <option value="4">无对角连接（适合铁路）</option>
-        <option value="8">有对角连接（适合墙壁，更省方块）</option>
+        <option value="8">有对角连接（适合墙壁）</option>
       </select>
     </div>
 
@@ -334,15 +349,19 @@ cv.addEventListener('wheel',e=>{
   render();
 },{passive:false});
 
-// slider labels
-document.getElementById('h0').addEventListener('input',function(){
-  document.getElementById('h0v').textContent=this.value; render();
-});
-document.getElementById('h1').addEventListener('input',function(){
-  document.getElementById('h1v').textContent=this.value; render();
-});
+// angle slider <-> number sync
+function syncAngle(sliderId, numId){
+  const s=document.getElementById(sliderId), n=document.getElementById(numId);
+  s.addEventListener('input',()=>{n.value=s.value; render();});
+  n.addEventListener('input',()=>{
+    const v=Math.min(360,Math.max(0,+n.value||0));
+    s.value=v; render();
+  });
+}
+syncAngle('a0s','a0');
+syncAngle('a1s','a1');
 
-['x0','z0','x1','z1','a0','a1'].forEach(id=>{
+['x0','z0','x1','z1','h0','h1'].forEach(id=>{
   document.getElementById(id).addEventListener('input',render);
 });
 document.getElementById('mode').addEventListener('change',()=>{if(lastBlocks.length)draw();});
