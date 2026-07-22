@@ -1,10 +1,11 @@
-# Minecraft绘制辅助工具
+# Minecraft 绘制辅助工具
 
 一个纯前端 HTML 工具，帮助在 Minecraft 中沿贝塞尔曲线铺设方块（铁路、墙壁、道路等）。
 
 ## 使用方法
 
-直接用浏览器打开 `index.html`，无需安装任何依赖。
+- 方法一（在线使用）：[Minecraft绘制辅助工具](https://enchantedmurphy.github.io/MinecraftCurveDrawingAssistant/)
+- 方法二（本地部署）：直接用浏览器打开 `index.html`，无需安装任何依赖。
 
 ## 界面布局
 
