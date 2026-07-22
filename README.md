@@ -2,6 +2,8 @@
 
 一个纯前端 HTML 工具，帮助在 Minecraft 中沿贝塞尔曲线铺设方块（铁路、墙壁、道路等）。
 
+![界面展示](figs/demo_v0.1.png)
+
 ## 使用方法
 
 - 方法一（在线使用）：[Minecraft绘制辅助工具](https://enchantedmurphy.github.io/MinecraftCurveDrawingAssistant/)
