@@ -152,32 +152,30 @@ function sampleCurve(n=500){
   return pts;
 }
 
-function rasterizeLine(x0,z0,x1,z1){
-  // Bresenham
-  const pts=[];
-  let dx=Math.abs(x1-x0), dz=Math.abs(z1-z0);
-  let sx=x0<x1?1:-1, sz=z0<z1?1:-1;
-  let err=dx-dz, x=x0, z=z0;
-  while(true){
-    pts.push({x,z});
-    if(x===x1&&z===z1) break;
-    const e2=2*err;
-    if(e2>-dz){err-=dz;x+=sx;}
-    if(e2<dx){err+=dx;z+=sz;}
-  }
-  return pts;
-}
-
 function getBlockPath8(){
-  const curve = sampleCurve(1000);
-  const set=new Set(), blocks=[];
-  for(let i=0;i<curve.length-1;i++){
-    const x0=Math.round(curve[i].x), z0=Math.round(curve[i].z);
-    const x1=Math.round(curve[i+1].x), z1=Math.round(curve[i+1].z);
-    const seg=rasterizeLine(x0,z0,x1,z1);
-    for(const p of seg){
-      const k=`${p.x},${p.z}`;
-      if(!set.has(k)){set.add(k);blocks.push({x:p.x,z:p.z});}
+  const N = 2000;
+  const {p0,p1,p2,p3} = getBezierPoints();
+  function bz(t,a,b,c,d){const mt=1-t;return a*mt*mt*mt+3*b*mt*mt*t+3*c*mt*t*t+d*t*t*t;}
+  const blocks=[], seen=new Set();
+  function add(x,z){const k=`${x},${z}`;if(!seen.has(k)){seen.add(k);blocks.push({x,z});}}
+  let cx=Math.round(bz(0,p0.x,p1.x,p2.x,p3.x));
+  let cz=Math.round(bz(0,p0.z,p1.z,p2.z,p3.z));
+  add(cx,cz);
+  for(let i=1;i<=N;i++){
+    const t=i/N;
+    const fx=bz(t,p0.x,p1.x,p2.x,p3.x);
+    const fz=bz(t,p0.z,p1.z,p2.z,p3.z);
+    let guard=0;
+    while(Math.max(Math.abs(fx-cx),Math.abs(fz-cz))>=1 && guard++<200){
+      // pick the 8-neighbor closest (euclidean) to the target curve point
+      let bdx=0,bdz=0,bd=Infinity;
+      for(let dx=-1;dx<=1;dx++) for(let dz=-1;dz<=1;dz++){
+        if(!dx&&!dz) continue;
+        const d=(cx+dx-fx)**2+(cz+dz-fz)**2;
+        if(d<bd){bd=d;bdx=dx;bdz=dz;}
+      }
+      cx+=bdx; cz+=bdz;
+      add(cx,cz);
     }
   }
   return blocks;
@@ -188,32 +186,27 @@ function getBlockPath4(){
   if(blocks8.length===0) return [];
   const result=[blocks8[0]];
   const seen=new Set([`${blocks8[0].x},${blocks8[0].z}`]);
+  function add(x,z){
+    const k=`${x},${z}`;
+    if(!seen.has(k)){seen.add(k);result.push({x,z});}
+  }
   for(let i=1;i<blocks8.length;i++){
     const prev=result[result.length-1];
     const cur=blocks8[i];
     const dx=cur.x-prev.x, dz=cur.z-prev.z;
-    if(Math.abs(dx)<=1&&Math.abs(dz)<=1&&!(Math.abs(dx)===1&&Math.abs(dz)===1)){
-      // already 4-connected
-      const k=`${cur.x},${cur.z}`;
-      if(!seen.has(k)){seen.add(k);result.push(cur);}
-    } else if(Math.abs(dx)===1&&Math.abs(dz)===1){
-      // diagonal: insert intermediate
-      // choose the axis closer to the curve tangent
-      const mid1={x:prev.x+dx, z:prev.z};
-      const mid2={x:prev.x, z:prev.z+dz};
-      const mid = (Math.abs(dx)>=Math.abs(dz)) ? mid1 : mid2;
-      const km=`${mid.x},${mid.z}`;
-      const kc=`${cur.x},${cur.z}`;
-      if(!seen.has(km)){seen.add(km);result.push(mid);}
-      if(!seen.has(kc)){seen.add(kc);result.push(cur);}
+    if(!(Math.abs(dx)===1&&Math.abs(dz)===1)){
+      add(cur.x,cur.z);
     } else {
-      // gap > 1, fill with 4-connected line
-      const steps=Math.max(Math.abs(dx),Math.abs(dz));
-      for(let s=1;s<=steps;s++){
-        const ix=Math.round(prev.x+dx*s/steps), iz=Math.round(prev.z+dz*s/steps);
-        const k=`${ix},${iz}`;
-        if(!seen.has(k)){seen.add(k);result.push({x:ix,z:iz});}
+      // diagonal step: insert intermediate, axis chosen by next step momentum
+      let stepXFirst;
+      if(i+1<blocks8.length){
+        const nxt=blocks8[i+1];
+        stepXFirst=Math.abs(nxt.x-cur.x)>=Math.abs(nxt.z-cur.z);
+      } else {
+        stepXFirst=Math.abs(dx)>=Math.abs(dz);
       }
+      if(stepXFirst){ add(prev.x+dx,prev.z); } else { add(prev.x,prev.z+dz); }
+      add(cur.x,cur.z);
     }
   }
   return result;
