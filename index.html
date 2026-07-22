@@ -4,110 +4,186 @@
 <meta charset="UTF-8">
 <title>Minecraft 曲线绘制辅助</title>
 <style>
+  :root{
+    --accent:#00ff99;--accent-dim:#00cc77;
+    --bg:#0d1b2a;--bg2:#16213e;--bg3:#0a1628;
+    --border:#0a3d62;--border2:#1e3a5f;
+    --text:#e0e0e0;--text-muted:#aaa;--text-dim:#555;
+    --tab-bg:#0a1220;
+  }
+  .light{
+    --accent:#007a44;--accent-dim:#005c33;
+    --bg:#f0f4f8;--bg2:#ffffff;--bg3:#e2eaf2;
+    --border:#b0c8e0;--border2:#ccdaeb;
+    --text:#1a2a3a;--text-muted:#556;--text-dim:#99a;
+    --tab-bg:#d8e8f4;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column}
-  h1{text-align:center;padding:14px;background:#16213e;color:#0f9;letter-spacing:2px;font-size:1.3rem;border-bottom:2px solid #0f9}
-  .main{display:flex;flex:1;gap:0;overflow:hidden}
-  .panel{background:#16213e;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto;border-right:2px solid #0a3d62}
-  .panel h2{color:#0f9;font-size:0.95rem;border-bottom:1px solid #0a3d62;padding-bottom:6px}
+  body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;transition:background .3s,color .3s}
+
+  /* ── Left column ── */
+  .left-col{display:flex;flex-direction:column;flex-shrink:0}
+  .top-bar{height:44px;display:flex;align-items:center;padding:0 6px;background:var(--bg2);border-bottom:1px solid var(--border);overflow:hidden;transition:width .32s cubic-bezier(.4,0,.2,1);width:328px}
+  .top-bar.collapsed{width:48px}
+  .top-title{font-size:1.05rem;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;margin-left:8px}
+  .left-row{display:flex;flex:1;overflow:hidden}
+  /* ── Tab bar ── */
+  .tab-bar{width:48px;flex-shrink:0;background:var(--tab-bg);display:flex;flex-direction:column;align-items:center;padding:6px 0;border-right:1px solid var(--border);z-index:10;gap:0}
+  .tab-bar-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:8px}
+  .tab-bar-bot{display:flex;flex-direction:column;align-items:center;gap:4px;padding-bottom:2px}
+  .tab-btn{width:36px;height:36px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s;flex-shrink:0}
+  .tab-btn:hover{background:var(--border2);color:var(--accent)}
+  .tab-btn.active{background:var(--border2);color:var(--accent)}
+  .tab-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tab-sep{width:24px;height:1px;background:var(--border);margin:4px 0}
+  /* ── Sidebar ── */
+  .sidebar{width:280px;flex-shrink:0;background:var(--bg2);border-right:2px solid var(--border);overflow:hidden;transition:width .32s cubic-bezier(.4,0,.2,1)}
+  .sidebar.collapsed{width:0;border-right:none}
+  .sidebar-inner{width:280px;min-width:280px;height:100%;display:flex;flex-direction:column}
+
+  /* ── Panel content ── */
+  .panel-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px;display:flex;flex-direction:column;gap:11px}
+  .panel-content h2{color:var(--accent);font-size:0.88rem;border-top:1px solid var(--border);padding-top:10px;margin-top:8px}
+  .panel-content h2:first-of-type{border-top:none;padding-top:0;margin-top:0}
   .field-group{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .field{display:flex;flex-direction:column;gap:3px}
-  label{font-size:0.75rem;color:#aaa}
-  input[type=number]{background:#0a1628;border:1px solid #0a3d62;color:#0f9;padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none}
-  input[type=number]:focus{border-color:#0f9}
-  select{background:#0a1628;border:1px solid #0a3d62;color:#0f9;padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none}
-  .slider-row{display:flex;flex-direction:column;gap:3px}
-  input[type=range]{width:100%;accent-color:#0f9}
-  .slider-val{font-size:0.8rem;color:#0f9;text-align:right}
-  button{background:#0f9;color:#1a1a2e;border:none;padding:8px;border-radius:4px;font-weight:bold;font-size:0.9rem;cursor:pointer;transition:background .2s}
-  button:hover{background:#0c7}
-  textarea{background:#0a1628;border:1px solid #0a3d62;color:#0f9;padding:8px;border-radius:4px;font-size:0.75rem;font-family:monospace;resize:vertical;min-height:120px;width:100%;outline:none}
-  .canvas-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:#0d1b2a;overflow:hidden}
-  canvas{border:2px solid #0a3d62;border-radius:4px;cursor:crosshair;background:#0a1628}
-  .canvas-controls{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
-  .canvas-controls label{font-size:0.8rem;color:#aaa}
-  .legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;justify-content:center}
-  .legend-item{display:flex;align-items:center;gap:4px;font-size:0.75rem}
-  .legend-dot{width:12px;height:12px;border-radius:2px}
-  .count-info{font-size:0.78rem;color:#888;text-align:center}
-  .section-label{font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+  label{font-size:0.75rem;color:var(--text-muted)}
+  input[type=number]{background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none;transition:border-color .2s}
+  input[type=number]:focus{border-color:var(--accent)}
+  select{background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .gen-btn{background:var(--accent);color:#0a1628;border:none;padding:8px;border-radius:4px;font-weight:bold;font-size:0.9rem;cursor:pointer;transition:background .2s;width:100%}
+  .gen-btn:hover{background:var(--accent-dim)}
+  textarea{background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:8px;border-radius:4px;font-size:0.75rem;font-family:monospace;resize:vertical;min-height:120px;width:100%;outline:none}
+  .count-info{font-size:0.76rem;color:var(--text-dim);text-align:right;margin-top:2px}
+  .section-label{font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
   .angle-row{display:flex;flex-direction:column;gap:3px}
   .angle-inputs{display:flex;align-items:center;gap:6px}
-  .angle-inputs input[type=range]{flex:1;accent-color:#0f9}
+  .angle-inputs input[type=range]{flex:1;accent-color:var(--accent)}
   .angle-inputs input[type=number]{width:58px;flex-shrink:0}
-  .angle-inputs span{font-size:0.8rem;color:#aaa;flex-shrink:0}
+  .angle-inputs span{font-size:0.8rem;color:var(--text-muted);flex-shrink:0}
+
+  /* ── Canvas area ── */
+  .canvas-area{flex:1;position:relative;display:flex;background:var(--bg);overflow:hidden;min-width:0}
+  canvas{flex:1;min-width:0;min-height:0;background:var(--bg3);cursor:crosshair}
+  .canvas-overlay-tr{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;z-index:5}
+  .canvas-overlay-tr label{font-size:0.78rem;color:var(--text-muted)}
+  .canvas-overlay-tr input[type=range]{width:90px;accent-color:var(--accent)}
+  .canvas-overlay-tr span{font-size:0.78rem;color:var(--accent);min-width:44px}
+  .reset-btn{background:transparent;color:var(--text-muted);border:1px solid var(--border);padding:3px 8px;border-radius:4px;font-size:0.78rem;cursor:pointer;transition:color .2s,border-color .2s}
+  .reset-btn:hover{color:var(--accent);border-color:var(--accent)}
+  .canvas-overlay-tl{position:absolute;top:10px;left:12px;display:flex;align-items:baseline;gap:6px;z-index:5}
+  .canvas-overlay-tl .tl-title{font-size:1.05rem;font-weight:700;color:var(--accent)}
+  .tl-ver{font-size:0.72rem;border-radius:4px;padding:1px 7px;white-space:nowrap}
+  :root .tl-ver{color:#00ff99;background:rgba(0,255,153,0.12)}
+  .light .tl-ver{color:#007a44;background:rgba(0,122,68,0.1)}
+  .canvas-overlay-br{position:absolute;bottom:10px;right:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;z-index:5}
+  .legend-item{display:flex;align-items:center;gap:4px;font-size:0.73rem;color:var(--text-muted)}
+  .legend-dot{width:11px;height:11px;border-radius:2px;flex-shrink:0}
 </style>
 </head>
 <body>
-<h1>⛏ Minecraft 曲线绘制辅助</h1>
-<div class="main">
-  <div class="panel">
-    <h2>坐标输入</h2>
-    <div class="section-label">起点</div>
-    <div class="field-group">
-      <div class="field"><label>X</label><input type="number" id="x0" value="0"></div>
-      <div class="field"><label>Z</label><input type="number" id="z0" value="0"></div>
+<div style="display:flex;height:100vh;overflow:hidden">
+
+  <!-- Left column: top-bar + tab-bar/sidebar row -->
+  <div class="left-col">
+    <div class="top-bar" id="topBar">
+      <button class="tab-btn" onclick="toggleSidebar()" title="收起/展开菜单">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="top-title">Minecraft绘制辅助工具</span>
+      <span class="tl-ver" style="margin-left:6px">v0.1</span>
     </div>
-    <div class="angle-row">
-      <label>切线角度 (0°=+X, 90°=+Z)</label>
-      <div class="angle-inputs">
-        <input type="range" id="a0s" min="0" max="360" value="45">
-        <input type="number" id="a0" value="45" min="0" max="360">
-        <span>°</span>
+    <div class="left-row">
+      <div class="tab-bar">
+        <div class="tab-bar-mid">
+          <button class="tab-btn tab-icon active" id="tab0" title="曲线绘制" onclick="switchTab(0)">
+            <svg viewBox="0 0 24 24"><path d="M3 17 C6 17 8 7 12 7 S18 14 21 14"/><circle cx="3" cy="17" r="1.5" fill="currentColor" stroke="none"/><circle cx="21" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </button>
+        </div>
+        <div class="tab-bar-bot">
+          <button class="tab-btn" title="GitHub" onclick="window.open('https://github.com/EnchantedMurphy/MinecraftCurveDrawingAssistant','_blank')">
+            <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          </button>
+          <button class="tab-btn" id="themeBtn" title="切换明暗模式" onclick="toggleTheme()">
+            <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+        </div>
       </div>
-    </div>
-
-    <div class="section-label">终点</div>
-    <div class="field-group">
-      <div class="field"><label>X</label><input type="number" id="x1" value="20"></div>
-      <div class="field"><label>Z</label><input type="number" id="z1" value="15"></div>
-    </div>
-    <div class="angle-row">
-      <label>切线角度 (0°=+X, 90°=+Z)</label>
-      <div class="angle-inputs">
-        <input type="range" id="a1s" min="0" max="360" value="135">
-        <input type="number" id="a1" value="135" min="0" max="360">
-        <span>°</span>
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-inner">
+        <div class="panel-content" id="panel0">
+      <h2>坐标输入</h2>
+      <div class="section-label">起点</div>
+      <div class="field-group">
+        <div class="field"><label>X</label><input type="number" id="x0" value="0"></div>
+        <div class="field"><label>Z</label><input type="number" id="z0" value="0"></div>
       </div>
+      <div class="angle-row">
+        <label>切线角度 (0°=+X, 90°=+Z)</label>
+        <div class="angle-inputs">
+          <input type="range" id="a0s" min="0" max="360" value="45">
+          <input type="number" id="a0" value="45" min="0" max="360">
+          <span>°</span>
+        </div>
+      </div>
+      <div class="section-label">终点</div>
+      <div class="field-group">
+        <div class="field"><label>X</label><input type="number" id="x1" value="20"></div>
+        <div class="field"><label>Z</label><input type="number" id="z1" value="15"></div>
+      </div>
+      <div class="angle-row">
+        <label>切线角度 (0°=+X, 90°=+Z)</label>
+        <div class="angle-inputs">
+          <input type="range" id="a1s" min="0" max="360" value="135">
+          <input type="number" id="a1" value="135" min="0" max="360">
+          <span>°</span>
+        </div>
+      </div>
+      <h2>曲线调节</h2>
+      <div class="field-group">
+        <div class="field"><label>起点把手长度</label><input type="number" id="h0" value="10" min="0.1" step="0.5"></div>
+        <div class="field"><label>终点把手长度</label><input type="number" id="h1" value="10" min="0.1" step="0.5"></div>
+      </div>
+      <h2>方块路径模式</h2>
+      <div class="field">
+        <label>连接方式</label>
+        <select id="mode">
+          <option value="4">无对角连接（适合铁路）</option>
+          <option value="8">有对角连接（适合墙壁）</option>
+        </select>
+      </div>
+      <button class="gen-btn" onclick="draw()">生成曲线</button>
+      <h2>方块坐标输出</h2>
+      <textarea id="output" readonly placeholder="点击「生成曲线」后，方块坐标将显示在这里"></textarea>
+      <div class="count-info" id="countInfo">—</div>
     </div>
-
-    <h2>曲线调节</h2>
-    <div class="field-group">
-      <div class="field"><label>起点把手长度</label><input type="number" id="h0" value="10" min="0.1" step="0.5"></div>
-      <div class="field"><label>终点把手长度</label><input type="number" id="h1" value="10" min="0.1" step="0.5"></div>
     </div>
-
-    <h2>方块路径模式</h2>
-    <div class="field">
-      <label>连接方式</label>
-      <select id="mode">
-        <option value="4">无对角连接（适合铁路）</option>
-        <option value="8">有对角连接（适合墙壁）</option>
-      </select>
+  </div>
     </div>
-
-    <button onclick="draw()">生成曲线</button>
-
-    <h2>方块坐标输出</h2>
-    <div class="count-info" id="countInfo">—</div>
-    <textarea id="output" readonly placeholder="点击「生成曲线」后，方块坐标将显示在这里"></textarea>
   </div>
 
-  <div class="canvas-area">
-    <div class="canvas-controls">
-      <label>缩放: </label>
-      <input type="range" id="zoom" min="4" max="40" value="16" style="width:100px">
-      <span id="zoomVal" style="font-size:0.8rem;color:#0f9">16px/格</span>
-      <button onclick="resetView()" style="padding:4px 10px;font-size:0.8rem">重置视图</button>
+  <!-- Canvas area: fills remaining space -->
+  <div class="canvas-area" id="canvasArea">
+    <div class="canvas-overlay-tl">
+      <span class="tl-title">Minecraft曲线绘制</span>
+      <span class="tl-ver">v0.1</span>
+    </div>
+    <div class="canvas-overlay-tr">
+      <label>缩放</label>
+      <input type="range" id="zoom" min="4" max="40" value="16">
+      <span id="zoomVal">16px/格</span>
+      <button class="reset-btn" onclick="resetView()">重置视图</button>
     </div>
     <canvas id="cv"></canvas>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#0f9;opacity:.6"></div>方块路径</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#f80;width:3px;height:12px;border-radius:1px"></div>原始曲线</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#f0f;width:8px;height:8px;border-radius:50%"></div>端点</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ff04;width:8px;height:8px;border-radius:50%"></div>控制点</div>
+    <div class="canvas-overlay-br">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--accent);opacity:.6"></div>方块路径</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f80;width:3px;height:11px;border-radius:1px"></div>原始曲线</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f0f;width:9px;height:9px;border-radius:50%"></div>端点</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,0,.5);width:9px;height:9px;border-radius:50%"></div>控制点</div>
     </div>
   </div>
+
 </div>
 
 <script>
@@ -119,9 +195,9 @@ let isDragging = false, dragStart = {x:0,y:0}, dragOffset = {x:0,y:0};
 let lastBlocks = [];
 
 function resizeCanvas(){
-  const area = document.querySelector('.canvas-area');
-  cv.width = area.clientWidth - 32;
-  cv.height = area.clientHeight - 80;
+  const area = document.getElementById('canvasArea');
+  cv.width = area.clientWidth;
+  cv.height = area.clientHeight;
 }
 
 function toScreen(wx, wz){
@@ -231,7 +307,10 @@ function drawGrid(){
   const left=toWorld(0,0), right=toWorld(cv.width,cv.height);
   const x0=Math.floor(left.x)-1, x1=Math.ceil(right.x)+1;
   const z0=Math.floor(left.z)-1, z1=Math.ceil(right.z)+1;
-  ctx.strokeStyle='#1e2d40';
+  const st=getComputedStyle(document.body);
+  const gridCol=isDark?'#1e2d40':'#cddaeb';
+  const axisCol=isDark?'#2a4a6a':'#90b8d8';
+  ctx.strokeStyle=gridCol;
   ctx.lineWidth=1;
   for(let x=x0;x<=x1;x++){
     const s=toScreen(x,0);
@@ -241,8 +320,7 @@ function drawGrid(){
     const s=toScreen(0,z);
     ctx.beginPath();ctx.moveTo(0,s.y);ctx.lineTo(cv.width,s.y);ctx.stroke();
   }
-  // axes
-  ctx.strokeStyle='#2a4a6a';ctx.lineWidth=1.5;
+  ctx.strokeStyle=axisCol;ctx.lineWidth=1.5;
   const ox=toScreen(0,0);
   ctx.beginPath();ctx.moveTo(ox.x,0);ctx.lineTo(ox.x,cv.height);ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,ox.y);ctx.lineTo(cv.width,ox.y);ctx.stroke();
@@ -256,17 +334,17 @@ function render(){
 
   // draw blocks
   if(lastBlocks.length>0){
-    ctx.fillStyle='rgba(0,255,153,0.25)';
-    ctx.strokeStyle='rgba(0,255,153,0.5)';
+    const ac=isDark?'0,255,153':'0,120,68';
+    ctx.fillStyle=`rgba(${ac},0.25)`;
+    ctx.strokeStyle=`rgba(${ac},0.5)`;
     ctx.lineWidth=0.5;
     for(const b of lastBlocks){
       const s=toScreen(b.x-0.5,b.z-0.5);
       ctx.fillRect(s.x,s.y,cellSize,cellSize);
       ctx.strokeRect(s.x,s.y,cellSize,cellSize);
     }
-    // number first/last
     if(cellSize>=10){
-      ctx.fillStyle='#0f9';
+      ctx.fillStyle=isDark?'#00ff99':'#007a44';
       ctx.font=`${Math.max(8,cellSize*0.45)}px monospace`;
       ctx.textAlign='center';ctx.textBaseline='middle';
       const b0=lastBlocks[0], s0=toScreen(b0.x,b0.z);
@@ -349,6 +427,34 @@ cv.addEventListener('wheel',e=>{
   render();
 },{passive:false});
 
+// sidebar toggle — rAF-resize during transition for smooth canvas
+let sideRaf=0;
+const sidebar=document.getElementById('sidebar');
+const topBar=document.getElementById('topBar');
+sidebar.addEventListener('transitionend',()=>{cancelAnimationFrame(sideRaf);resizeCanvas();render();});
+function toggleSidebar(){
+  cancelAnimationFrame(sideRaf);
+  (function L(){resizeCanvas();render();sideRaf=requestAnimationFrame(L);})();
+  sidebar.classList.toggle('collapsed');
+  topBar.classList.toggle('collapsed');
+}
+
+// tab switch
+function switchTab(idx){
+  document.querySelectorAll('.tab-icon').forEach((b,i)=>b.classList.toggle('active',i===idx));
+}
+
+// theme toggle
+let isDark=true;
+const moonSVG=`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+const sunSVG=`<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+function toggleTheme(){
+  isDark=!isDark;
+  document.body.classList.toggle('light',!isDark);
+  document.getElementById('themeIcon').innerHTML=isDark?moonSVG:sunSVG;
+  render();
+}
+
 // angle slider <-> number sync
 function syncAngle(sliderId, numId){
   const s=document.getElementById(sliderId), n=document.getElementById(numId);
@@ -367,8 +473,9 @@ syncAngle('a1s','a1');
 document.getElementById('mode').addEventListener('change',()=>{if(lastBlocks.length)draw();});
 
 window.addEventListener('resize',()=>{resizeCanvas();render();});
+window.addEventListener('load',()=>{resizeCanvas();draw();});
 resizeCanvas();
-draw();
+if(cv.width>0) draw();
 </script>
 </body>
 </html>
