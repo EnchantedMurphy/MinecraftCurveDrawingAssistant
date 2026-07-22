@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Minecraft 曲线绘制辅助</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column}
+  h1{text-align:center;padding:14px;background:#16213e;color:#0f9;letter-spacing:2px;font-size:1.3rem;border-bottom:2px solid #0f9}
+  .main{display:flex;flex:1;gap:0;overflow:hidden}
+  .panel{background:#16213e;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto;border-right:2px solid #0a3d62}
+  .panel h2{color:#0f9;font-size:0.95rem;border-bottom:1px solid #0a3d62;padding-bottom:6px}
+  .field-group{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .field{display:flex;flex-direction:column;gap:3px}
+  label{font-size:0.75rem;color:#aaa}
+  input[type=number]{background:#0a1628;border:1px solid #0a3d62;color:#0f9;padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none}
+  input[type=number]:focus{border-color:#0f9}
+  select{background:#0a1628;border:1px solid #0a3d62;color:#0f9;padding:5px 7px;border-radius:4px;font-size:0.85rem;width:100%;outline:none}
+  .slider-row{display:flex;flex-direction:column;gap:3px}
+  input[type=range]{width:100%;accent-color:#0f9}
+  .slider-val{font-size:0.8rem;color:#0f9;text-align:right}
+  button{background:#0f9;color:#1a1a2e;border:none;padding:8px;border-radius:4px;font-weight:bold;font-size:0.9rem;cursor:pointer;transition:background .2s}
+  button:hover{background:#0c7}
+  textarea{background:#0a1628;border:1px solid #0a3d62;color:#0f9;padding:8px;border-radius:4px;font-size:0.75rem;font-family:monospace;resize:vertical;min-height:120px;width:100%;outline:none}
+  .canvas-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:#0d1b2a;overflow:hidden}
+  canvas{border:2px solid #0a3d62;border-radius:4px;cursor:crosshair;background:#0a1628}
+  .canvas-controls{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+  .canvas-controls label{font-size:0.8rem;color:#aaa}
+  .legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;justify-content:center}
+  .legend-item{display:flex;align-items:center;gap:4px;font-size:0.75rem}
+  .legend-dot{width:12px;height:12px;border-radius:2px}
+  .count-info{font-size:0.78rem;color:#888;text-align:center}
+  .section-label{font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+</style>
+</head>
+<body>
+<h1>⛏ Minecraft 曲线绘制辅助</h1>
+<div class="main">
+  <div class="panel">
+    <h2>坐标输入</h2>
+    <div class="section-label">起点</div>
+    <div class="field-group">
+      <div class="field"><label>X</label><input type="number" id="x0" value="0"></div>
+      <div class="field"><label>Z</label><input type="number" id="z0" value="0"></div>
+    </div>
+    <div class="field"><label>切线角度 (0°=+X, 90°=+Z)</label><input type="number" id="a0" value="45" min="0" max="180"></div>
+
+    <div class="section-label">终点</div>
+    <div class="field-group">
+      <div class="field"><label>X</label><input type="number" id="x1" value="20"></div>
+      <div class="field"><label>Z</label><input type="number" id="z1" value="15"></div>
+    </div>
+    <div class="field"><label>切线角度 (0°=+X, 90°=+Z)</label><input type="number" id="a1" value="135" min="0" max="180"></div>
+
+    <h2>曲线调节</h2>
+    <div class="slider-row">
+      <label>起点把手长度 <span class="slider-val" id="h0v">10</span></label>
+      <input type="range" id="h0" min="1" max="50" value="10">
+    </div>
+    <div class="slider-row">
+      <label>终点把手长度 <span class="slider-val" id="h1v">10</span></label>
+      <input type="range" id="h1" min="1" max="50" value="10">
+    </div>
+
+    <h2>方块路径模式</h2>
+    <div class="field">
+      <label>连接方式</label>
+      <select id="mode">
+        <option value="8">有对角连接（适合铁路）</option>
+        <option value="4">无对角连接（适合墙壁）</option>
+      </select>
+    </div>
+
+    <button onclick="draw()">生成曲线</button>
+
+    <h2>方块坐标输出</h2>
+    <div class="count-info" id="countInfo">—</div>
+    <textarea id="output" readonly placeholder="点击「生成曲线」后，方块坐标将显示在这里"></textarea>
+  </div>
+
+  <div class="canvas-area">
+    <div class="canvas-controls">
+      <label>缩放: </label>
+      <input type="range" id="zoom" min="4" max="40" value="16" style="width:100px">
+      <span id="zoomVal" style="font-size:0.8rem;color:#0f9">16px/格</span>
+      <button onclick="resetView()" style="padding:4px 10px;font-size:0.8rem">重置视图</button>
+    </div>
+    <canvas id="cv"></canvas>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#0f9;opacity:.6"></div>方块路径</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f80;width:3px;height:12px;border-radius:1px"></div>原始曲线</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f0f;width:8px;height:8px;border-radius:50%"></div>端点</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff04;width:8px;height:8px;border-radius:50%"></div>控制点</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let cellSize = 16;
+let offsetX = 0, offsetY = 0;
+let isDragging = false, dragStart = {x:0,y:0}, dragOffset = {x:0,y:0};
+let lastBlocks = [];
+
+function resizeCanvas(){
+  const area = document.querySelector('.canvas-area');
+  cv.width = area.clientWidth - 32;
+  cv.height = area.clientHeight - 80;
+}
+
+function toScreen(wx, wz){
+  return {x: offsetX + wx * cellSize, y: offsetY + wz * cellSize};
+}
+function toWorld(sx, sy){
+  return {x:(sx-offsetX)/cellSize, z:(sy-offsetY)/cellSize};
+}
+
+function resetView(){
+  const x0=+document.getElementById('x0').value, z0=+document.getElementById('z0').value;
+  const x1=+document.getElementById('x1').value, z1=+document.getElementById('z1').value;
+  const cx=(x0+x1)/2, cz=(z0+z1)/2;
+  offsetX = cv.width/2 - cx*cellSize;
+  offsetY = cv.height/2 - cz*cellSize;
+  render();
+}
+
+function getBezierPoints(){
+  const x0=+document.getElementById('x0').value, z0=+document.getElementById('z0').value;
+  const x1=+document.getElementById('x1').value, z1=+document.getElementById('z1').value;
+  const a0=+document.getElementById('a0').value * Math.PI/180;
+  const a1=+document.getElementById('a1').value * Math.PI/180;
+  const h0=+document.getElementById('h0').value;
+  const h1=+document.getElementById('h1').value;
+  const cx0 = x0 + Math.cos(a0)*h0, cz0 = z0 + Math.sin(a0)*h0;
+  const cx1 = x1 - Math.cos(a1)*h1, cz1 = z1 - Math.sin(a1)*h1;
+  return {p0:{x:x0,z:z0}, p1:{x:cx0,z:cz0}, p2:{x:cx1,z:cz1}, p3:{x:x1,z:z1}};
+}
+
+function bezier(t, p0, p1, p2, p3){
+  const mt=1-t;
+  return p0*mt*mt*mt + 3*p1*mt*mt*t + 3*p2*mt*t*t + p3*t*t*t;
+}
+
+function sampleCurve(n=500){
+  const {p0,p1,p2,p3} = getBezierPoints();
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n;
+    pts.push({x:bezier(t,p0.x,p1.x,p2.x,p3.x), z:bezier(t,p0.z,p1.z,p2.z,p3.z)});
+  }
+  return pts;
+}
+
+function rasterizeLine(x0,z0,x1,z1){
+  // Bresenham
+  const pts=[];
+  let dx=Math.abs(x1-x0), dz=Math.abs(z1-z0);
+  let sx=x0<x1?1:-1, sz=z0<z1?1:-1;
+  let err=dx-dz, x=x0, z=z0;
+  while(true){
+    pts.push({x,z});
+    if(x===x1&&z===z1) break;
+    const e2=2*err;
+    if(e2>-dz){err-=dz;x+=sx;}
+    if(e2<dx){err+=dx;z+=sz;}
+  }
+  return pts;
+}
+
+function getBlockPath8(){
+  const curve = sampleCurve(1000);
+  const set=new Set(), blocks=[];
+  for(let i=0;i<curve.length-1;i++){
+    const x0=Math.round(curve[i].x), z0=Math.round(curve[i].z);
+    const x1=Math.round(curve[i+1].x), z1=Math.round(curve[i+1].z);
+    const seg=rasterizeLine(x0,z0,x1,z1);
+    for(const p of seg){
+      const k=`${p.x},${p.z}`;
+      if(!set.has(k)){set.add(k);blocks.push({x:p.x,z:p.z});}
+    }
+  }
+  return blocks;
+}
+
+function getBlockPath4(){
+  const blocks8 = getBlockPath8();
+  if(blocks8.length===0) return [];
+  const result=[blocks8[0]];
+  const seen=new Set([`${blocks8[0].x},${blocks8[0].z}`]);
+  for(let i=1;i<blocks8.length;i++){
+    const prev=result[result.length-1];
+    const cur=blocks8[i];
+    const dx=cur.x-prev.x, dz=cur.z-prev.z;
+    if(Math.abs(dx)<=1&&Math.abs(dz)<=1&&!(Math.abs(dx)===1&&Math.abs(dz)===1)){
+      // already 4-connected
+      const k=`${cur.x},${cur.z}`;
+      if(!seen.has(k)){seen.add(k);result.push(cur);}
+    } else if(Math.abs(dx)===1&&Math.abs(dz)===1){
+      // diagonal: insert intermediate
+      // choose the axis closer to the curve tangent
+      const mid1={x:prev.x+dx, z:prev.z};
+      const mid2={x:prev.x, z:prev.z+dz};
+      const mid = (Math.abs(dx)>=Math.abs(dz)) ? mid1 : mid2;
+      const km=`${mid.x},${mid.z}`;
+      const kc=`${cur.x},${cur.z}`;
+      if(!seen.has(km)){seen.add(km);result.push(mid);}
+      if(!seen.has(kc)){seen.add(kc);result.push(cur);}
+    } else {
+      // gap > 1, fill with 4-connected line
+      const steps=Math.max(Math.abs(dx),Math.abs(dz));
+      for(let s=1;s<=steps;s++){
+        const ix=Math.round(prev.x+dx*s/steps), iz=Math.round(prev.z+dz*s/steps);
+        const k=`${ix},${iz}`;
+        if(!seen.has(k)){seen.add(k);result.push({x:ix,z:iz});}
+      }
+    }
+  }
+  return result;
+}
+
+function drawGrid(){
+  const left=toWorld(0,0), right=toWorld(cv.width,cv.height);
+  const x0=Math.floor(left.x)-1, x1=Math.ceil(right.x)+1;
+  const z0=Math.floor(left.z)-1, z1=Math.ceil(right.z)+1;
+  ctx.strokeStyle='#1e2d40';
+  ctx.lineWidth=1;
+  for(let x=x0;x<=x1;x++){
+    const s=toScreen(x,0);
+    ctx.beginPath();ctx.moveTo(s.x,0);ctx.lineTo(s.x,cv.height);ctx.stroke();
+  }
+  for(let z=z0;z<=z1;z++){
+    const s=toScreen(0,z);
+    ctx.beginPath();ctx.moveTo(0,s.y);ctx.lineTo(cv.width,s.y);ctx.stroke();
+  }
+  // axes
+  ctx.strokeStyle='#2a4a6a';ctx.lineWidth=1.5;
+  const ox=toScreen(0,0);
+  ctx.beginPath();ctx.moveTo(ox.x,0);ctx.lineTo(ox.x,cv.height);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,ox.y);ctx.lineTo(cv.width,ox.y);ctx.stroke();
+}
+
+function render(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  drawGrid();
+
+  const {p0,p1,p2,p3}=getBezierPoints();
+
+  // draw blocks
+  if(lastBlocks.length>0){
+    ctx.fillStyle='rgba(0,255,153,0.25)';
+    ctx.strokeStyle='rgba(0,255,153,0.5)';
+    ctx.lineWidth=0.5;
+    for(const b of lastBlocks){
+      const s=toScreen(b.x-0.5,b.z-0.5);
+      ctx.fillRect(s.x,s.y,cellSize,cellSize);
+      ctx.strokeRect(s.x,s.y,cellSize,cellSize);
+    }
+    // number first/last
+    if(cellSize>=10){
+      ctx.fillStyle='#0f9';
+      ctx.font=`${Math.max(8,cellSize*0.45)}px monospace`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const b0=lastBlocks[0], s0=toScreen(b0.x,b0.z);
+      ctx.fillText('S',s0.x,s0.y);
+      const bn=lastBlocks[lastBlocks.length-1], sn=toScreen(bn.x,bn.z);
+      ctx.fillText('E',sn.x,sn.y);
+    }
+  }
+
+  // draw smooth curve
+  const curve=sampleCurve(300);
+  ctx.beginPath();
+  for(let i=0;i<curve.length;i++){
+    const s=toScreen(curve[i].x,curve[i].z);
+    i===0?ctx.moveTo(s.x,s.y):ctx.lineTo(s.x,s.y);
+  }
+  ctx.strokeStyle='#ff8800';ctx.lineWidth=2;ctx.stroke();
+
+  // control handles
+  ctx.setLineDash([4,4]);
+  ctx.strokeStyle='#ffff0044';ctx.lineWidth=1;
+  const sp0=toScreen(p0.x,p0.z), sp1=toScreen(p1.x,p1.z);
+  const sp2=toScreen(p2.x,p2.z), sp3=toScreen(p3.x,p3.z);
+  ctx.beginPath();ctx.moveTo(sp0.x,sp0.y);ctx.lineTo(sp1.x,sp1.y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(sp3.x,sp3.y);ctx.lineTo(sp2.x,sp2.y);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // control points
+  ctx.fillStyle='#ffff0088';
+  [[sp1,'cp1'],[sp2,'cp2']].forEach(([p,])=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
+  });
+
+  // endpoints
+  [[sp0,'S'],[sp3,'E']].forEach(([p,lbl])=>{
+    ctx.fillStyle='#ff00ff';
+    ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(lbl,p.x,p.y);
+  });
+}
+
+function draw(){
+  const mode=document.getElementById('mode').value;
+  lastBlocks = mode==='8' ? getBlockPath8() : getBlockPath4();
+  const lines=lastBlocks.map(b=>`${b.x} ${b.z}`).join('\n');
+  document.getElementById('output').value=lines;
+  document.getElementById('countInfo').textContent=`共 ${lastBlocks.length} 个方块`;
+  resetView();
+}
+
+// Zoom
+document.getElementById('zoom').addEventListener('input',function(){
+  cellSize=+this.value;
+  document.getElementById('zoomVal').textContent=cellSize+'px/格';
+  render();
+});
+
+// Drag
+cv.addEventListener('mousedown',e=>{isDragging=true;dragStart={x:e.clientX,y:e.clientY};dragOffset={x:offsetX,y:offsetY};});
+cv.addEventListener('mousemove',e=>{
+  if(!isDragging) return;
+  offsetX=dragOffset.x+(e.clientX-dragStart.x);
+  offsetY=dragOffset.y+(e.clientY-dragStart.y);
+  render();
+});
+cv.addEventListener('mouseup',()=>isDragging=false);
+cv.addEventListener('mouseleave',()=>isDragging=false);
+cv.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const rect=cv.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const wBefore=toWorld(mx,my);
+  cellSize=Math.max(4,Math.min(40,cellSize-(e.deltaY>0?1:-1)));
+  document.getElementById('zoom').value=cellSize;
+  document.getElementById('zoomVal').textContent=cellSize+'px/格';
+  offsetX=mx-wBefore.x*cellSize;
+  offsetY=my-wBefore.z*cellSize;
+  render();
+},{passive:false});
+
+// slider labels
+document.getElementById('h0').addEventListener('input',function(){
+  document.getElementById('h0v').textContent=this.value; render();
+});
+document.getElementById('h1').addEventListener('input',function(){
+  document.getElementById('h1v').textContent=this.value; render();
+});
+
+['x0','z0','x1','z1','a0','a1'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',render);
+});
+document.getElementById('mode').addEventListener('change',()=>{if(lastBlocks.length)draw();});
+
+window.addEventListener('resize',()=>{resizeCanvas();render();});
+resizeCanvas();
+draw();
+</script>
+</body>
+</html>
