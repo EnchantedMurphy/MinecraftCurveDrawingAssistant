@@ -64,6 +64,17 @@
   .angle-inputs input[type=range]{flex:1;accent-color:var(--accent)}
   .angle-inputs input[type=number]{width:58px;flex-shrink:0}
   .angle-inputs span{font-size:0.8rem;color:var(--text-muted);flex-shrink:0}
+  .panel-content.hidden{display:none}
+  .check-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+  .check-row input{accent-color:var(--accent)}
+  .check-row label{cursor:pointer}
+  .hint{font-size:.7rem;line-height:1.45;color:var(--text-dim)}
+  #arcFields{display:flex;flex-direction:column;gap:11px}
+  #arcFields h2{margin-bottom:0}
+  #arcFields h2:first-of-type{border-top:1px solid var(--border);padding-top:10px;margin-top:8px}
+  input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
+  .error-info{min-height:1em;font-size:.72rem;color:#ef7373}
+  .error-info:empty{display:none}
 
   /* ── Canvas area ── */
   .canvas-area{flex:1;position:relative;display:flex;background:var(--bg);overflow:hidden;min-width:0}
@@ -81,6 +92,7 @@
   .light .tl-ver{color:#2563eb;background:rgba(37,99,235,0.1)}
   .canvas-overlay-br{position:absolute;bottom:10px;right:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;z-index:5}
   .legend-item{display:flex;align-items:center;gap:4px;font-size:0.73rem;color:var(--text-muted)}
+  .legend-item.hidden{display:none}
   .legend-dot{width:11px;height:11px;border-radius:2px;flex-shrink:0}
 </style>
 </head>
@@ -94,13 +106,16 @@
         <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span class="top-title">Minecraft绘制辅助工具</span>
-      <span class="tl-ver" style="margin-left:6px">v0.2</span>
+      <span class="tl-ver" style="margin-left:6px">v0.3</span>
     </div>
     <div class="left-row">
       <div class="tab-bar">
         <div class="tab-bar-mid">
           <button class="tab-btn tab-icon active" id="tab0" title="曲线绘制" onclick="switchTab(0)">
             <svg viewBox="0 0 24 24"><path d="M3 17 C6 17 8 7 12 7 S18 14 21 14"/><circle cx="3" cy="17" r="1.5" fill="currentColor" stroke="none"/><circle cx="21" cy="14" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <button class="tab-btn tab-icon" id="tab1" title="弧形绘制" onclick="switchTab(1)">
+            <svg viewBox="0 0 24 24"><path d="M4 18 A10 10 0 0 1 20 18"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
           </button>
         </div>
         <div class="tab-bar-bot">
@@ -160,6 +175,36 @@
       <textarea id="output" readonly placeholder="点击「生成曲线」后，方块坐标将显示在这里"></textarea>
       <div class="count-info" id="countInfo">—</div>
     </div>
+    <div class="panel-content hidden" id="panel1">
+      <h2>弧形定义</h2>
+      <div class="field">
+        <label>绘制方法</label>
+        <select id="arcMethod">
+          <option value="center">圆心、半径、起止角度</option>
+          <option value="endpoints">起点、终点、半径</option>
+          <option value="three">起点、终点、中间点</option>
+          <option value="tangent">起点、切线、半径、圆心角</option>
+        </select>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="arcFull">
+        <label for="arcFull">绘制完整的圆</label>
+      </div>
+      <div id="arcFields"></div>
+      <div class="error-info" id="arcError"></div>
+      <h2>方块路径模式</h2>
+      <div class="field">
+        <label>连接方式</label>
+        <select id="arcMode">
+          <option value="4">无对角连接（适合铁路）</option>
+          <option value="8">有对角连接（适合墙壁）</option>
+        </select>
+      </div>
+      <button class="gen-btn" onclick="drawArc()">生成弧形</button>
+      <h2>方块坐标输出</h2>
+      <textarea id="arcOutput" readonly placeholder="点击「生成弧形」后，方块坐标将显示在这里"></textarea>
+      <div class="count-info" id="arcCountInfo">—</div>
+    </div>
     </div>
   </div>
     </div>
@@ -168,8 +213,8 @@
   <!-- Canvas area: fills remaining space -->
   <div class="canvas-area" id="canvasArea">
     <div class="canvas-overlay-tl">
-      <span class="tl-title">曲线绘制</span>
-      <span class="tl-ver">v0.2</span>
+      <span class="tl-title" id="canvasTitle">曲线绘制</span>
+      <span class="tl-ver" id="canvasVersion">v0.2</span>
     </div>
     <div class="canvas-overlay-tr">
       <label>缩放</label>
@@ -180,9 +225,10 @@
     <canvas id="cv"></canvas>
     <div class="canvas-overlay-br">
       <div class="legend-item"><div class="legend-dot" style="background:var(--accent);opacity:.6"></div>方块路径</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#f80;width:3px;height:11px;border-radius:1px"></div>原始曲线</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f80;width:3px;height:11px;border-radius:1px"></div><span id="smoothLegend">原始曲线</span></div>
       <div class="legend-item"><div class="legend-dot" style="background:#f0f;width:9px;height:9px;border-radius:50%"></div>端点</div>
-      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,0,.5);width:9px;height:9px;border-radius:50%"></div>控制点</div>
+      <div class="legend-item" id="controlLegend"><div class="legend-dot" style="background:rgba(255,255,0,.5);width:9px;height:9px;border-radius:50%"></div>控制点</div>
+      <div class="legend-item hidden" id="arcAuxLegend"></div>
     </div>
   </div>
 
@@ -195,6 +241,8 @@ let cellSize = 16;
 let offsetX = 0, offsetY = 0;
 let isDragging = false, dragStart = {x:0,y:0}, dragOffset = {x:0,y:0};
 let lastBlocks = [];
+let arcLastBlocks = [];
+let currentTab = 0;
 
 function resizeCanvas(){
   const area = document.getElementById('canvasArea');
@@ -210,6 +258,15 @@ function toWorld(sx, sy){
 }
 
 function resetView(){
+  if(currentTab===1){
+    const arc=getArcGeometry(false);
+    if(arc){
+      offsetX=cv.width/2-arc.cx*cellSize;
+      offsetY=cv.height/2-arc.cz*cellSize;
+      render();
+    }
+    return;
+  }
   const x0=+document.getElementById('x0').value, z0=+document.getElementById('z0').value;
   const x1=+document.getElementById('x1').value, z1=+document.getElementById('z1').value;
   const cx=(x0+x1)/2, cz=(z0+z1)/2;
@@ -327,7 +384,7 @@ function drawGrid(){
   ctx.beginPath();ctx.moveTo(0,ox.y);ctx.lineTo(cv.width,ox.y);ctx.stroke();
 }
 
-function render(){
+function renderBezier(){
   ctx.clearRect(0,0,cv.width,cv.height);
   drawGrid();
 
@@ -389,12 +446,338 @@ function render(){
   });
 }
 
+function normAngle(a){
+  const tau=Math.PI*2;
+  return ((a%tau)+tau)%tau;
+}
+function arcDelta(from,to,dir){
+  return dir>0?normAngle(to-from):-normAngle(from-to);
+}
+function num(id){ return +document.getElementById(id).value; }
+function pointFrom(prefix){ return {x:num(prefix+'x'),z:num(prefix+'z')}; }
+
+function getArcGeometry(showError=true){
+  const method=document.getElementById('arcMethod').value;
+  const full=document.getElementById('arcFull').checked;
+  let cx,cz,r,start,sweep,midPoint=null;
+  try{
+    if(method==='center'){
+      cx=num('acx'); cz=num('acz'); r=num('ar');
+      start=num('asa')*Math.PI/180;
+      const dir=document.getElementById('adir').value==='cw'?1:-1;
+      sweep=full?dir*Math.PI*2:arcDelta(start,num('aea')*Math.PI/180,dir);
+    }else if(method==='endpoints'){
+      const p0=pointFrom('ae0'),p1=pointFrom('ae1');
+      r=num('aer');
+      const dx=p1.x-p0.x,dz=p1.z-p0.z,chord=Math.hypot(dx,dz);
+      if(chord<1e-9) throw Error('起点与终点不能重合。');
+      if(r<chord/2) throw Error(`半径至少应为 ${(chord/2).toFixed(3)}。`);
+      const dir=document.getElementById('aedir').value==='cw'?1:-1;
+      const wantLarge=document.getElementById('aelarge').value==='large';
+      const mx=(p0.x+p1.x)/2,mz=(p0.z+p1.z)/2,h=Math.sqrt(Math.max(0,r*r-chord*chord/4));
+      const candidates=[
+        {cx:mx-dz/chord*h,cz:mz+dx/chord*h},
+        {cx:mx+dz/chord*h,cz:mz-dx/chord*h}
+      ];
+      let chosen=candidates[0], chosenSweep=0;
+      for(const c of candidates){
+        const s=Math.atan2(p0.z-c.cz,p0.x-c.cx);
+        const sw=arcDelta(s,Math.atan2(p1.z-c.cz,p1.x-c.cx),dir);
+        if((wantLarge&&Math.abs(sw)>Math.PI+1e-9)||(!wantLarge&&Math.abs(sw)<=Math.PI+1e-9)){chosen=c;chosenSweep=sw;break;}
+      }
+      cx=chosen.cx;cz=chosen.cz;start=Math.atan2(p0.z-cz,p0.x-cx);
+      sweep=full?dir*Math.PI*2:chosenSweep;
+    }else if(method==='three'){
+      const a=pointFrom('at0'),b=pointFrom('at1'),m=pointFrom('atm');
+      const d=2*(a.x*(b.z-m.z)+b.x*(m.z-a.z)+m.x*(a.z-b.z));
+      if(Math.abs(d)<1e-9) throw Error('三个点不能共线。');
+      const aa=a.x*a.x+a.z*a.z,bb=b.x*b.x+b.z*b.z,mm=m.x*m.x+m.z*m.z;
+      cx=(aa*(b.z-m.z)+bb*(m.z-a.z)+mm*(a.z-b.z))/d;
+      cz=(aa*(m.x-b.x)+bb*(a.x-m.x)+mm*(b.x-a.x))/d;
+      r=Math.hypot(a.x-cx,a.z-cz); start=Math.atan2(a.z-cz,a.x-cx);
+      const end=Math.atan2(b.z-cz,b.x-cx),middle=Math.atan2(m.z-cz,m.x-cx);
+      const cw=arcDelta(start,end,1);
+      const dir=Math.abs(arcDelta(start,middle,1))<=Math.abs(cw)+1e-9?1:-1;
+      sweep=full?dir*Math.PI*2:arcDelta(start,end,dir);
+      midPoint=m;
+    }else{
+      const p=pointFrom('ap0'), tangent=num('apata')*Math.PI/180;
+      r=num('apr');
+      const dir=document.getElementById('apdir').value==='cw'?1:-1;
+      cx=p.x-dir*Math.sin(tangent)*r;
+      cz=p.z+dir*Math.cos(tangent)*r;
+      start=Math.atan2(p.z-cz,p.x-cx);
+      sweep=dir*(full?360:num('apsweep'))*Math.PI/180;
+    }
+    if(!Number.isFinite(cx+cz+r+start+sweep)||r<=0) throw Error('请输入有效的坐标和正半径。');
+    if(Math.abs(sweep)<1e-9) throw Error('弧形角度不能为 0°。');
+    document.getElementById('arcError').textContent='';
+    return {cx,cz,r,start,sweep,midPoint};
+  }catch(e){
+    if(showError) document.getElementById('arcError').textContent=e.message;
+    return null;
+  }
+}
+
+function sampleArc(n=1200){
+  const a=getArcGeometry();
+  if(!a) return [];
+  const count=Math.max(32,Math.ceil(Math.abs(a.sweep)*a.r*12),n);
+  return Array.from({length:count+1},(_,i)=>{
+    const t=a.start+a.sweep*i/count;
+    return {x:a.cx+Math.cos(t)*a.r,z:a.cz+Math.sin(t)*a.r};
+  });
+}
+
+function getArcBlockPath8(points){
+  if(!points.length) return [];
+  const path=[],seen=new Set();
+  const add=(x,z)=>{const k=`${x},${z}`;if(!seen.has(k)){seen.add(k);path.push({x,z});}};
+  let x=Math.round(points[0].x),z=Math.round(points[0].z);
+  add(x,z);
+  for(let i=1;i<points.length;i++){
+    const fx=points[i].x,fz=points[i].z;
+    let guard=0;
+    while(Math.max(Math.abs(fx-x),Math.abs(fz-z))>=1&&guard++<200){
+      let bestDx=0,bestDz=0,bestDistance=Infinity;
+      for(let dx=-1;dx<=1;dx++) for(let dz=-1;dz<=1;dz++){
+        if(!dx&&!dz) continue;
+        const distance=(x+dx-fx)**2+(z+dz-fz)**2;
+        if(distance<bestDistance){
+          bestDistance=distance;bestDx=dx;bestDz=dz;
+        }
+      }
+      x+=bestDx;z+=bestDz;
+      add(x,z);
+    }
+  }
+  return path;
+}
+
+function getArcBlockPath4(points){
+  const blocks8=getArcBlockPath8(points);
+  if(!blocks8.length) return [];
+  const result=[blocks8[0]],seen=new Set([`${blocks8[0].x},${blocks8[0].z}`]);
+  const arc=getArcGeometry(false);
+  const add=(x,z)=>{
+    const key=`${x},${z}`;
+    if(!seen.has(key)){seen.add(key);result.push({x,z});}
+  };
+  for(let i=1;i<blocks8.length;i++){
+    // Always compare consecutive points from the original 8-neighbor path.
+    // An inserted corner must not influence how the next diagonal is resolved.
+    const prev=blocks8[i-1],cur=blocks8[i];
+    const dx=cur.x-prev.x,dz=cur.z-prev.z;
+    if(Math.abs(dx)===1&&Math.abs(dz)===1){
+      const xCandidate={x:prev.x+dx,z:prev.z};
+      const zCandidate={x:prev.x,z:prev.z+dz};
+      let useX=true;
+      if(arc){
+        const radialError=p=>Math.abs(Math.hypot(p.x-arc.cx,p.z-arc.cz)-arc.r);
+        const xError=radialError(xCandidate),zError=radialError(zCandidate);
+        // A fixed X-first tie break is preserved by both horizontal and
+        // vertical reflection, unlike the former look-ahead rule.
+        useX=xError<=zError+1e-10;
+      }
+      add(useX?xCandidate.x:zCandidate.x,useX?xCandidate.z:zCandidate.z);
+    }
+    add(cur.x,cur.z);
+  }
+  return result;
+}
+
+function renderArc(){
+  ctx.clearRect(0,0,cv.width,cv.height); drawGrid();
+  if(arcLastBlocks.length){
+    const ac=isDark?'91,155,213':'37,99,235';
+    ctx.fillStyle=`rgba(${ac},0.25)`;ctx.strokeStyle=`rgba(${ac},0.5)`;ctx.lineWidth=.5;
+    for(const b of arcLastBlocks){
+      const s=toScreen(b.x-.5,b.z-.5);
+      ctx.fillRect(s.x,s.y,cellSize,cellSize);ctx.strokeRect(s.x,s.y,cellSize,cellSize);
+    }
+  }
+  const a=getArcGeometry(false),points=a?sampleArc(500):[];
+  if(!a||!points.length) return;
+  ctx.beginPath();
+  points.forEach((p,i)=>{const s=toScreen(p.x,p.z);i?ctx.lineTo(s.x,s.y):ctx.moveTo(s.x,s.y);});
+  ctx.strokeStyle=isDark?'#ff8800':'#d4700a';ctx.lineWidth=2;ctx.stroke();
+
+  const method=document.getElementById('arcMethod').value;
+  if(method==='tangent'){
+    const p=points[0],angle=num('apata')*Math.PI/180;
+    const halfLength=Math.max(4,Math.min(12,a.r));
+    const lineStart=toScreen(
+      p.x-Math.cos(angle)*halfLength,
+      p.z-Math.sin(angle)*halfLength
+    );
+    const lineEnd=toScreen(
+      p.x+Math.cos(angle)*halfLength,
+      p.z+Math.sin(angle)*halfLength
+    );
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.strokeStyle=isDark?'rgba(90,220,255,.8)':'rgba(0,130,180,.8)';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(lineStart.x,lineStart.y);ctx.lineTo(lineEnd.x,lineEnd.y);ctx.stroke();
+    ctx.restore();
+  }
+
+  const c=toScreen(a.cx,a.cz);
+  ctx.fillStyle=isDark?'rgba(255,255,0,.65)':'rgba(180,130,0,.7)';
+  ctx.beginPath();ctx.arc(c.x,c.y,4,0,Math.PI*2);ctx.fill();
+
+  if(method==='three'&&a.midPoint){
+    const m=toScreen(a.midPoint.x,a.midPoint.z);
+    ctx.fillStyle=isDark?'#00c8ff':'#0087b8';
+    ctx.beginPath();ctx.arc(m.x,m.y,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('M',m.x,m.y);
+  }
+
+  const endpoints=[points[0],points[points.length-1]];
+  endpoints.forEach((p,i)=>{
+    const s=toScreen(p.x,p.z);ctx.fillStyle=isDark?'#ff00ff':'#c030c0';
+    ctx.beginPath();ctx.arc(s.x,s.y,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(i?'E':'S',s.x,s.y);
+  });
+}
+
+function render(){ currentTab===0?renderBezier():renderArc(); }
+
 function draw(){
   const mode=document.getElementById('mode').value;
   lastBlocks = mode==='8' ? getBlockPath8() : getBlockPath4();
   const lines=lastBlocks.map(b=>`${b.x} ${b.z}`).join('\n');
   document.getElementById('output').value=lines;
   document.getElementById('countInfo').textContent=`共 ${lastBlocks.length} 个方块`;
+  resetView();
+}
+
+const arcForms={
+  center:`
+    <h2>圆与角度</h2>
+    <div class="section-label">圆心坐标</div>
+    <div class="field-group">
+      <div class="field"><label>X</label><input type="number" id="acx" value="0"></div>
+      <div class="field"><label>Z</label><input type="number" id="acz" value="0"></div>
+    </div>
+    <div class="field"><label>半径</label><input type="number" id="ar" value="10" min=".001" step=".5"></div>
+    <div class="angle-row">
+      <label>起始角度 (0°=+X, 90°=+Z)</label>
+      <div class="angle-inputs">
+        <input type="range" id="asas" min="0" max="360" value="180">
+        <input type="number" id="asa" value="180" min="0" max="360">
+        <span>°</span>
+      </div>
+    </div>
+    <div class="angle-row">
+      <label>结束角度 (0°=+X, 90°=+Z)</label>
+      <div class="angle-inputs">
+        <input type="range" id="aeas" min="0" max="360" value="360" data-arc-length>
+        <input type="number" id="aea" value="360" min="0" max="360" data-arc-length>
+        <span>°</span>
+      </div>
+    </div>
+    <div class="field"><label>绘制方向</label><select id="adir"><option value="cw">顺时针</option><option value="ccw">逆时针</option></select></div>`,
+  endpoints:`
+    <h2>端点与半径</h2>
+    <div class="section-label">起点坐标</div>
+    <div class="field-group">
+      <div class="field"><label>X</label><input type="number" id="ae0x" value="0"></div>
+      <div class="field"><label>Z</label><input type="number" id="ae0z" value="0"></div>
+    </div>
+    <div class="section-label">终点坐标</div>
+    <div class="field-group">
+      <div class="field"><label>X</label><input type="number" id="ae1x" value="16"></div>
+      <div class="field"><label>Z</label><input type="number" id="ae1z" value="8"></div>
+    </div>
+    <div class="field"><label>半径</label><input type="number" id="aer" value="12" min=".001" step=".5"></div>
+    <div class="field-group">
+      <div class="field"><label>方向</label><select id="aedir"><option value="cw">顺时针</option><option value="ccw">逆时针</option></select></div>
+      <div class="field"><label>弧段</label><select id="aelarge" data-arc-length><option value="small">小圆弧</option><option value="large">大圆弧</option></select></div>
+    </div>
+    <div class="hint">同一半径通常对应两个圆心；方向与大/小圆弧共同确定唯一结果。</div>`,
+  three:`
+    <h2>三点定圆</h2>
+    <div class="section-label">起点坐标</div>
+    <div class="field-group"><div class="field"><label>X</label><input type="number" id="at0x" value="0"></div><div class="field"><label>Z</label><input type="number" id="at0z" value="0"></div></div>
+    <div class="section-label">终点坐标</div>
+    <div class="field-group"><div class="field"><label>X</label><input type="number" id="at1x" value="16"></div><div class="field"><label>Z</label><input type="number" id="at1z" value="0"></div></div>
+    <div class="section-label">弧上中间点坐标</div>
+    <div class="field-group"><div class="field"><label>X</label><input type="number" id="atmx" value="8"></div><div class="field"><label>Z</label><input type="number" id="atmz" value="-6"></div></div>
+    <div class="hint">中间点指弧形必经的第三点，并不要求位于弧长中点；三个点不可共线。</div>`,
+  tangent:`
+    <h2>起点切线</h2>
+    <div class="section-label">起点坐标</div>
+    <div class="field-group"><div class="field"><label>X</label><input type="number" id="ap0x" value="0"></div><div class="field"><label>Z</label><input type="number" id="ap0z" value="0"></div></div>
+    <div class="angle-row">
+      <label>切线角度 (0°=+X, 90°=+Z)</label>
+      <div class="angle-inputs">
+        <input type="range" id="apatas" min="0" max="360" value="0">
+        <input type="number" id="apata" value="0" min="0" max="360">
+        <span>°</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field"><label>半径</label><input type="number" id="apr" value="10" min=".001" step=".5"></div>
+      <div class="field"><label>方向</label><select id="apdir"><option value="cw">顺时针</option><option value="ccw">逆时针</option></select></div>
+    </div>
+    <div class="angle-row">
+      <label>圆心角</label>
+      <div class="angle-inputs">
+        <input type="range" id="apsweeps" min="1" max="360" value="120" data-arc-length>
+        <input type="number" id="apsweep" value="120" min=".001" max="360" data-arc-length>
+        <span>°</span>
+      </div>
+    </div>
+    <div class="hint">切线角度约定为 0° 指向 +X，90° 指向 +Z。半径用于确定圆心距离。</div>`
+};
+
+function updateArcFields(){
+  document.getElementById('arcFields').innerHTML=arcForms[document.getElementById('arcMethod').value];
+  document.querySelectorAll('#arcFields input,#arcFields select').forEach(el=>{
+    el.addEventListener('input',()=>{updateFullCircleState();render();});
+    el.addEventListener('change',()=>{updateFullCircleState();render();});
+  });
+  [['asas','asa'],['aeas','aea'],['apatas','apata'],['apsweeps','apsweep']].forEach(([sliderId,numId])=>{
+    const slider=document.getElementById(sliderId),number=document.getElementById(numId);
+    if(!slider||!number) return;
+    slider.addEventListener('input',()=>{number.value=slider.value;render();});
+    number.addEventListener('input',()=>{
+      const min=+slider.min,max=+slider.max;
+      slider.value=Math.min(max,Math.max(min,+number.value||0));
+    });
+  });
+  updateArcAuxLegend();
+  updateFullCircleState(); render();
+}
+function updateArcAuxLegend(){
+  if(currentTab!==1) return;
+  const method=document.getElementById('arcMethod').value;
+  const legend=document.getElementById('arcAuxLegend');
+  legend.classList.toggle('hidden',method!=='three'&&method!=='tangent');
+  if(method==='three'){
+    legend.innerHTML='<div class="legend-dot" style="background:#00c8ff;width:9px;height:9px;border-radius:50%"></div>弧上中间点';
+  }else if(method==='tangent'){
+    legend.innerHTML='<div style="width:14px;border-top:2px dashed #5adcff;flex-shrink:0"></div>起点切线';
+  }else{
+    legend.innerHTML='';
+  }
+}
+function updateFullCircleState(){
+  const full=document.getElementById('arcFull').checked;
+  document.querySelectorAll('#arcFields [data-arc-length]').forEach(el=>el.disabled=full);
+}
+function drawArc(){
+  const pts=sampleArc();
+  if(!pts.length) return;
+  arcLastBlocks=document.getElementById('arcMode').value==='8'
+    ?getArcBlockPath8(pts)
+    :getArcBlockPath4(pts);
+  document.getElementById('arcOutput').value=arcLastBlocks.map(b=>`${b.x} ${b.z}`).join('\n');
+  document.getElementById('arcCountInfo').textContent=`共 ${arcLastBlocks.length} 个方块`;
   resetView();
 }
 
@@ -503,7 +886,19 @@ function toggleSidebar(){
 
 // tab switch
 function switchTab(idx){
+  currentTab=idx;
   document.querySelectorAll('.tab-icon').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.getElementById('panel0').classList.toggle('hidden',idx!==0);
+  document.getElementById('panel1').classList.toggle('hidden',idx!==1);
+  document.getElementById('canvasTitle').textContent=idx===0?'曲线绘制':'弧形绘制';
+  document.getElementById('canvasVersion').textContent=idx===0?'v0.2':'v0.1';
+  document.getElementById('smoothLegend').textContent=idx===0?'原始曲线':'原始弧形';
+  document.getElementById('controlLegend').innerHTML=idx===0
+    ?'<div class="legend-dot" style="background:rgba(255,255,0,.5);width:9px;height:9px;border-radius:50%"></div>控制点'
+    :'<div class="legend-dot" style="background:rgba(255,255,0,.5);width:9px;height:9px;border-radius:50%"></div>圆心';
+  if(idx===1) updateArcAuxLegend();
+  else document.getElementById('arcAuxLegend').classList.add('hidden');
+  resetView();
 }
 
 // theme toggle
@@ -533,10 +928,14 @@ syncAngle('a1s','a1');
   document.getElementById(id).addEventListener('input',render);
 });
 document.getElementById('mode').addEventListener('change',()=>{if(lastBlocks.length)draw();});
+document.getElementById('arcMethod').addEventListener('change',updateArcFields);
+document.getElementById('arcFull').addEventListener('change',()=>{updateFullCircleState();render();});
+document.getElementById('arcMode').addEventListener('change',()=>{if(arcLastBlocks.length)drawArc();});
 
 window.addEventListener('resize',()=>{resizeCanvas();render();});
-window.addEventListener('load',()=>{resizeCanvas();draw();});
+window.addEventListener('load',()=>{resizeCanvas();updateArcFields();draw();});
 resizeCanvas();
+updateArcFields();
 if(cv.width>0) draw();
 </script>
 </body>
