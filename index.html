@@ -551,6 +551,19 @@ function getArcBlockPath8(points){
       add(x,z);
     }
   }
+
+  // The distance-based tracing above may stop in a neighboring block when
+  // the geometric endpoint has fractional coordinates. Always finish at the
+  // block that actually contains the endpoint.
+  const endpoint=points[points.length-1];
+  const endX=Math.round(endpoint.x),endZ=Math.round(endpoint.z);
+  let endpointGuard=0;
+  while((x!==endX||z!==endZ)&&endpointGuard++<1000){
+    x+=Math.sign(endX-x);
+    z+=Math.sign(endZ-z);
+    add(x,z);
+  }
+
   return path;
 }
 
