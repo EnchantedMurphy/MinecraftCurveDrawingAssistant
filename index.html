@@ -2,6 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Minecraft绘制辅助工具</title>
 <link rel="icon" href="figs/logo.svg" type="image/svg+xml">
 <style>
@@ -66,7 +67,7 @@
 
   /* ── Canvas area ── */
   .canvas-area{flex:1;position:relative;display:flex;background:var(--bg);overflow:hidden;min-width:0}
-  canvas{flex:1;min-width:0;min-height:0;background:var(--bg3);cursor:crosshair}
+  canvas{flex:1;min-width:0;min-height:0;background:var(--bg3);cursor:crosshair;touch-action:none;user-select:none;-webkit-user-select:none}
   .canvas-overlay-tr{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;z-index:5}
   .canvas-overlay-tr label{font-size:0.78rem;color:var(--text-muted)}
   .canvas-overlay-tr input[type=range]{width:90px;accent-color:var(--accent)}
@@ -93,7 +94,7 @@
         <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span class="top-title">Minecraft绘制辅助工具</span>
-      <span class="tl-ver" style="margin-left:6px">v0.1</span>
+      <span class="tl-ver" style="margin-left:6px">v0.2</span>
     </div>
     <div class="left-row">
       <div class="tab-bar">
@@ -167,8 +168,8 @@
   <!-- Canvas area: fills remaining space -->
   <div class="canvas-area" id="canvasArea">
     <div class="canvas-overlay-tl">
-      <span class="tl-title">Minecraft曲线绘制</span>
-      <span class="tl-ver">v0.1</span>
+      <span class="tl-title">曲线绘制</span>
+      <span class="tl-ver">v0.2</span>
     </div>
     <div class="canvas-overlay-tr">
       <label>缩放</label>
@@ -404,24 +405,85 @@ document.getElementById('zoom').addEventListener('input',function(){
   render();
 });
 
-// Drag
-cv.addEventListener('mousedown',e=>{isDragging=true;dragStart={x:e.clientX,y:e.clientY};dragOffset={x:offsetX,y:offsetY};});
-cv.addEventListener('mousemove',e=>{
-  if(!isDragging) return;
-  offsetX=dragOffset.x+(e.clientX-dragStart.x);
-  offsetY=dragOffset.y+(e.clientY-dragStart.y);
-  render();
+// Mouse/touch drag and two-finger pinch zoom
+const activePointers = new Map();
+let pinchStart = null;
+
+function updateZoomDisplay(){
+  document.getElementById('zoom').value=cellSize;
+  document.getElementById('zoomVal').textContent=Math.round(cellSize*10)/10+'px/格';
+}
+
+function startDrag(pointer){
+  isDragging=true;
+  dragStart={x:pointer.x,y:pointer.y};
+  dragOffset={x:offsetX,y:offsetY};
+}
+
+function startPinch(){
+  const [a,b]=[...activePointers.values()];
+  const cx=(a.x+b.x)/2, cy=(a.y+b.y)/2;
+  pinchStart={
+    distance:Math.hypot(b.x-a.x,b.y-a.y),
+    cellSize,
+    world:toWorld(cx,cy)
+  };
+  isDragging=false;
+}
+
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  const rect=cv.getBoundingClientRect();
+  activePointers.set(e.pointerId,{x:e.clientX-rect.left,y:e.clientY-rect.top});
+  cv.setPointerCapture(e.pointerId);
+  if(activePointers.size===1) startDrag(activePointers.values().next().value);
+  else if(activePointers.size===2) startPinch();
 });
-cv.addEventListener('mouseup',()=>isDragging=false);
-cv.addEventListener('mouseleave',()=>isDragging=false);
+
+cv.addEventListener('pointermove',e=>{
+  if(!activePointers.has(e.pointerId)) return;
+  e.preventDefault();
+  const rect=cv.getBoundingClientRect();
+  activePointers.set(e.pointerId,{x:e.clientX-rect.left,y:e.clientY-rect.top});
+
+  if(activePointers.size>=2){
+    const [a,b]=[...activePointers.values()];
+    const cx=(a.x+b.x)/2, cy=(a.y+b.y)/2;
+    const distance=Math.hypot(b.x-a.x,b.y-a.y);
+    if(!pinchStart) startPinch();
+    if(pinchStart.distance>0){
+      cellSize=Math.max(4,Math.min(40,pinchStart.cellSize*distance/pinchStart.distance));
+      offsetX=cx-pinchStart.world.x*cellSize;
+      offsetY=cy-pinchStart.world.z*cellSize;
+      updateZoomDisplay();
+      render();
+    }
+  }else if(isDragging){
+    const pointer=activePointers.values().next().value;
+    offsetX=dragOffset.x+(pointer.x-dragStart.x);
+    offsetY=dragOffset.y+(pointer.y-dragStart.y);
+    render();
+  }
+});
+
+function endPointer(e){
+  activePointers.delete(e.pointerId);
+  pinchStart=null;
+  if(activePointers.size===1) startDrag(activePointers.values().next().value);
+  else if(activePointers.size===0) isDragging=false;
+  else startPinch();
+}
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
+cv.addEventListener('lostpointercapture',endPointer);
+
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
   const rect=cv.getBoundingClientRect();
   const mx=e.clientX-rect.left, my=e.clientY-rect.top;
   const wBefore=toWorld(mx,my);
   cellSize=Math.max(4,Math.min(40,cellSize-(e.deltaY>0?1:-1)));
-  document.getElementById('zoom').value=cellSize;
-  document.getElementById('zoomVal').textContent=cellSize+'px/格';
+  updateZoomDisplay();
   offsetX=mx-wBefore.x*cellSize;
   offsetY=my-wBefore.z*cellSize;
   render();
